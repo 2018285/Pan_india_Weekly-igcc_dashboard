@@ -1,0 +1,23 @@
+﻿# Backup HTML files
+Pan_india_igcc_dashboard.pre*.html
+Pan_india_igcc_dashboard.backup.html
+*.backup.html
+
+# Sensitive files
+.github_pat
+*.env
+*.key
+
+# Python scripts (internal)
+_*.py
+*.py
+
+# Data files
+*.csv
+*.xlsx
+
+# Analysis folder
+Analysis/
+
+# Google Apps Script
+*.gs
