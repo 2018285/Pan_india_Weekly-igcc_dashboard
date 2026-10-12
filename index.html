@@ -2589,7 +2589,7 @@ function renderKPIs() {
       if (_histYr) { citiesInScope().forEach(c => { var d = _histYr[c] && _histYr[c][currentWeek]; if (d) { tot_o += d.orders||0; tot_i += d.igcc||0; } }); }
       kpis = [
         { label:`${scopeName} IGCC % — ${currentYear} ${currentWeek}`, value: pct.toFixed(2)+'%', sub: _histYr ? 'Σ IGCC ÷ Σ Orders (historical)' : 'Avg · CITY_IGCC_BY_YEAR', cls:'danger' },
-        { label:'Target IGCC %', value:'0.99%', sub:'Universal target', cls:'accent' },
+          { label:'Target IGCC %', value: impactTarget().toFixed(2)+'%', sub:'Monthly target', cls:'accent' },
         { label:'Worst City', value: ranked[0]? ranked[0].name+' '+ranked[0].pct.toFixed(2)+'%' : '—', sub:'Highest IGCC%', cls:'pink' },
         { label:'Best City', value: ranked[ranked.length-1]? ranked[ranked.length-1].name+' '+ranked[ranked.length-1].pct.toFixed(2)+'%' : '—', sub:'Lowest IGCC%', cls:'accent' },
         { label:`${scopeName} Orders`, value: _histYr ? (tot_o/1000).toFixed(0)+'k' : 'N/A', sub:`${currentYear} ${currentWeek}`, cls:'info' },
@@ -2602,7 +2602,7 @@ function renderKPIs() {
       const _wd = _histYr && _histYr[currentCity] && _histYr[currentCity][currentWeek];
       kpis = [
         { label:`${currentCity} IGCC % — ${currentYear} ${currentWeek}`, value: pct.toFixed(2)+'%', sub: tierLabel, cls: pct>1.5?'danger':pct>1?'warn':'accent' },
-        { label:'Target IGCC %', value:'0.99%', sub:'Universal target', cls:'accent' },
+          { label:'Target IGCC %', value: impactTarget().toFixed(2)+'%', sub:'Monthly target', cls:'accent' },
         { label:'Orders', value: _wd ? (_wd.orders/1000).toFixed(0)+'k' : 'N/A', sub:`${currentYear} ${currentWeek}`, cls:'info' },
         { label:'IGCC Count', value: _wd ? _wd.igcc.toLocaleString() : 'N/A', sub:`${currentYear} ${currentWeek}`, cls:'warn' },
       ];
@@ -2640,7 +2640,7 @@ function renderKPIs() {
       {label:'Article Orders', value:artOrders.toLocaleString(), sub:artCode+' · '+periodSub, cls:'info'},
       {label:'Cities with Article', value:cityRows.length.toString(), sub:'of '+citiesInScope().length+' in scope', cls:'purple'},
       {label:'Worst City', value:cityRows[0]?cityRows[0].name+' '+cityRows[0].pct.toFixed(2)+'%':'—', sub:'Highest IGCC% for article', cls:'pink'},
-      {label:'Target IGCC %', value:'0.99%', sub:'Universal target', cls:'accent'},
+      {label:'Target IGCC %', value: impactTarget().toFixed(2)+'%', sub:'Monthly target', cls:'accent'},
     ];
     document.getElementById('kpi-row').innerHTML=kpis.map(k=>`<div class="kpi-card ${k.cls}"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.value}</div><div class="kpi-sub">${k.sub}</div></div>`).join('');
     return;
@@ -2657,7 +2657,7 @@ function renderKPIs() {
     const bRanked = citiesInScope().map(name => ({name, pct:cityPct(name,currentWeek)})).sort((a,b)=>b.pct-a.pct);
     kpis = [
       {label:'IGCC % — '+bNames, value:bt.pct.toFixed(2)+'%', sub:periodSub, cls:bt.pct>1.5?'danger':bt.pct>1?'warn':'accent'},
-      {label:'Target IGCC %', value:'0.99%', sub:'Universal target', cls:'accent'},
+      {label:'Target IGCC %', value: impactTarget().toFixed(2)+'%', sub:'Monthly target', cls:'accent'},
       {label:'Filtered Orders', value:(bt.orders/1000).toFixed(0)+'k', sub:periodSub, cls:'info'},
       {label:'Filtered IGCC Count', value:bt.igcc.toLocaleString(), sub:periodSub, cls:'warn'},
       {label:'Worst City', value:bRanked[0]?bRanked[0].name+' '+bRanked[0].pct.toFixed(2)+'%':'—', sub:'Highest IGCC% for filter', cls:'pink'},
@@ -2677,9 +2677,9 @@ function renderKPIs() {
       { label:`${scopeName} IGCC % — ${periodLabel}`, value: totals.pct.toFixed(2)+'%', sub: currentTier==='ALL' && currentRegion==='ALL' && currentServing==='ALL' && OVERALL_PCTS[currentWeek]!=null ? 'Source: FNV %INC -WoW trend (Overall)' : 'Σ IGCC ÷ Σ Orders (auto)', trend: totalsW20.pct===0 ? null : (trend>0?'+'+trend.toFixed(2)+'pp vs Wk20':trend.toFixed(2)+'pp vs Wk20'), trendCls: trend>0?'up':'down', cls:'danger' },
       { label:`${scopeName} Orders`, value:(totals.orders/1000).toFixed(0)+'k', sub: periodSub, cls:'info' },
       { label:`${scopeName} IGCC`, value: totals.igcc.toLocaleString(), sub: periodSub, cls:'warn' },
-      { label:'Target IGCC %', value:'0.99%', sub:'Universal target', cls:'accent' },
+        { label:'Target IGCC %', value: impactTarget().toFixed(2)+'%', sub:'Monthly target', cls:'accent' },
       { label:'Worst City', value: ranked[0]? ranked[0].name+' '+ranked[0].pct.toFixed(2)+'%' : '—', sub:'Highest IGCC%', cls:'pink' },
-      { label:'IGCC Reduction Needed', value: Math.max(0, Math.round(totals.orders*(totals.pct-0.99)/100)).toLocaleString(), sub:'to reach 0.99%', cls:'purple' },
+      { label:'IGCC Reduction Needed', value: Math.max(0, Math.round(totals.orders*(totals.pct-impactTarget())/100)).toLocaleString(), sub:'to reach '+impactTarget().toFixed(2)+'%', cls:'purple' },
     ];
   } else {
     const c = DATA.cities[currentCity];
@@ -2688,13 +2688,13 @@ function renderKPIs() {
     const pct = cityPct(currentCity, currentWeek);
     const pctPrev = cityPct(currentCity, 'W20');
     const trend = pct - pctPrev;
-    const reduction = Math.max(0, Math.round(w.orders * (pct - 0.99)/100));
+    const reduction = Math.max(0, Math.round(w.orders * (pct - impactTarget())/100));
     kpis = [
       { label: c.name+' IGCC % — '+periodLabel, value: pct.toFixed(2)+'%', sub:`Tier ${c.tier}`, trend: (currentWeek!=='W20' && pctPrev!==0)?(trend>0?'+'+trend.toFixed(2)+'pp':trend.toFixed(2)+'pp')+' vs Wk20':null, trendCls: trend>0?'up':'down', cls: pct>1.5?'danger':pct>1?'warn':'accent' },
-      { label:'Target IGCC %', value:'0.99%', sub:'Universal target', cls:'accent' },
+        { label:'Target IGCC %', value: impactTarget().toFixed(2)+'%', sub:'Monthly target', cls:'accent' },
       { label:'Orders', value:(w.orders/1000).toFixed(0)+'k', sub: periodSub, cls:'info' },
       { label:'IGCC Count', value: w.igcc.toLocaleString(), sub: periodSub, cls:'warn' },
-      { label:'IGCC ↓ Needed', value: reduction>0? reduction.toLocaleString():'—', sub: reduction>0?'to reach 0.99%':'at/below target', cls: reduction>0?'pink':'accent' },
+      { label:'IGCC ↓ Needed', value: reduction>0? reduction.toLocaleString():'—', sub: reduction>0?'to reach '+impactTarget().toFixed(2)+'%':'at/below target', cls: reduction>0?'pink':'accent' },
       { label:'Top SKU', value: c.topSku, sub:'highest-IGCC SKU', cls:'purple' },
     ];
   }
@@ -2732,7 +2732,7 @@ function renderBanner() {
     const bt = panTotals(currentWeek);
     const bPct = bt.pct;
     const bEmoji = bPct>2?'🔴':bPct>1.5?'🟠':bPct>1?'🟡':'🟢';
-    html = `<div class="icon">${bEmoji}</div><div class="text"><strong>${brandNames} | ${periodLabel}:</strong> <strong>${bPct.toFixed(2)}%</strong> IGCC · ${bt.igcc.toLocaleString()} IGCC on ${bt.orders.toLocaleString()} orders. Target: 0.99%.</div>`;
+    html = `<div class="icon">${bEmoji}</div><div class="text"><strong>${brandNames} | ${periodLabel}:</strong> <strong>${bPct.toFixed(2)}%</strong> IGCC · ${bt.igcc.toLocaleString()} IGCC on ${bt.orders.toLocaleString()} orders. Target: ${impactTarget().toFixed(2)}%.</div>`;
     document.getElementById('gap-banner').innerHTML = html;
     return;
   }
@@ -2747,7 +2747,7 @@ function renderBanner() {
     });
     const artPct = artOrders ? (artIgcc/artOrders)*100 : 0;
     const aEmoji = artPct>2?'🔴':artPct>1.5?'🟠':artPct>1?'🟡':'🟢';
-    html = `<div class="icon">${aEmoji}</div><div class="text"><strong>Article: ${currentArticle} — ${artName} | ${periodLabel}:</strong> <strong>${artPct.toFixed(2)}%</strong> IGCC · ${artIgcc.toLocaleString()} IGCC on ${artOrders.toLocaleString()} orders (PAN scope). Target: 0.99%. <span style="color:var(--text-dim);font-size:11px;">Viewing city: ${currentCity === 'PAN' ? 'PAN India' : currentCity}</span></div>`;
+    html = `<div class="icon">${aEmoji}</div><div class="text"><strong>Article: ${currentArticle} — ${artName} | ${periodLabel}:</strong> <strong>${artPct.toFixed(2)}%</strong> IGCC · ${artIgcc.toLocaleString()} IGCC on ${artOrders.toLocaleString()} orders (PAN scope). Target: ${impactTarget().toFixed(2)}%. <span style="color:var(--text-dim);font-size:11px;">Viewing city: ${currentCity === 'PAN' ? 'PAN India' : currentCity}</span></div>`;
     document.getElementById('gap-banner').innerHTML = html;
     return;
   }
@@ -2757,15 +2757,15 @@ function renderBanner() {
     const tPrev = panTotals('W' + (curWkNum - 1));
     const scopeName = (currentTier==='ALL'?'PAN India':currentTier==='1'?'Tier-1 cities':'Tier-2 cities') + regionLbl();
     const trendStr = (curWkNum <= 1 || tPrev.pct === 0) ? '<em>Prior week data not loaded</em>' : `Wk ${curWkNum-1}→${curWkNum} trend: <strong>${tPrev.pct.toFixed(2)}% → ${totals.pct.toFixed(2)}%</strong> (${((totals.pct-tPrev.pct)).toFixed(2)}pp)`;
-    html = `<div class="icon">🇮🇳</div><div class="text"><strong>${scopeName} — ${periodLabel}:</strong> ${totals.pct.toFixed(2)}% IGCC. ${trendStr}. Target: 0.99%.${coverage}</div>`;
+    html = `<div class="icon">🇮🇳</div><div class="text"><strong>${scopeName} — ${periodLabel}:</strong> ${totals.pct.toFixed(2)}% IGCC. ${trendStr}. Target: ${impactTarget().toFixed(2)}%.${coverage}</div>`;
   } else {
     const c = DATA.cities[currentCity] || {name: currentCity, tier: '—', topSku: '—'};
     const pct = cityPct(currentCity, currentWeek);
-    const direction = pct > 0.99 ? 'above' : 'below';
+    const _tg = impactTarget(); const direction = pct > _tg ? 'above' : 'below';
     const emoji = pct > 2 ? '🔴' : pct > 1.5 ? '🟠' : pct > 1 ? '🟡' : '🟢';
     const tierStr = c.tier !== '—' ? ` (Tier ${c.tier})` : '';
     const skuStr = c.topSku !== '—' ? ` Top SKU: <strong>${c.topSku}</strong>.` : '';
-    html = `<div class="icon">${emoji}</div><div class="text"><strong>${c.name}${tierStr} — ${periodLabel}:</strong> <strong>${pct.toFixed(2)}%</strong>, ${direction} 0.99% target.${skuStr} ${pct > 0.99 ? `Gap: ${(pct - 0.99).toFixed(2)}pp.` : 'At/below target.'}${cityEmptyNote}</div>`;
+    html = `<div class="icon">${emoji}</div><div class="text"><strong>${c.name}${tierStr} — ${periodLabel}:</strong> <strong>${pct.toFixed(2)}%</strong>, ${direction} ${_tg.toFixed(2)}% target.${skuStr} ${pct > _tg ? `Gap: ${(pct - _tg).toFixed(2)}pp.` : 'At/below target.'}${cityEmptyNote}</div>`;
   }
   document.getElementById('gap-banner').innerHTML = html;
 }
@@ -2795,10 +2795,10 @@ function renderCityTable() {
     }
     return { name, ..._c26, pct:cityPct(name,currentWeek), pctPrev:cityPct(name,prevWeek), w:cityWk(name,currentWeek) };
   }).filter(Boolean).sort((a,b)=>b.pct-a.pct);
-  const statusFor = pct => pct > 1.8 ? '<span class="pill pill-critical">Critical</span>' : pct > 1.3 ? '<span class="pill pill-high">High</span>' : pct > 0.99 ? '<span class="pill pill-moderate">Moderate</span>' : '<span class="pill pill-low">On Target</span>';
+  const statusFor = pct => pct > 1.8 ? '<span class="pill pill-critical">Critical</span>' : pct > 1.3 ? '<span class="pill pill-high">High</span>' : pct > impactTarget() ? '<span class="pill pill-moderate">Moderate</span>' : '<span class="pill pill-low">On Target</span>';
   const tbody = document.getElementById('tbody-cities');
   tbody.innerHTML = ranked.map((c,i)=> {
-    const gap = c.pct - 0.99;
+    const gap = c.pct - impactTarget();
     const reduction = Math.max(0, Math.round(c.w.orders * gap/100));
     const trend = c.pct - c.pctPrev;
     // Compare to the previous week; suppress if that week has no data.
@@ -2811,7 +2811,7 @@ function renderCityTable() {
       <td style="color:var(--text-dim); font-size:11px;">${c.region || '—'}</td>
       <td class="num"><span class="cell-orders">${c.w.orders.toLocaleString()}</span></td>
       <td class="num"><span class="cell-igcc">${c.w.igcc.toLocaleString()}</span></td>
-      <td class="num" style="font-weight:600; color:${c.pct>1.8?'var(--danger)':c.pct>1.3?'#fb923c':c.pct>0.99?'var(--warn)':'var(--accent)'};">${c.pct.toFixed(2)}%</td>
+      <td class="num" style="font-weight:600; color:${c.pct>1.8?'var(--danger)':c.pct>1.3?'#fb923c':c.pct>impactTarget()?'var(--warn)':'var(--accent)'};">${c.pct.toFixed(2)}%</td>
       <td class="num" style="font-size:11px;">${trendStr}</td>
       <td>${statusFor(c.pct)}</td>
       <td class="num">${gap > 0 ? '+'+gap.toFixed(2)+'pp' : '<span style="color:var(--accent);">at target</span>'}</td>
@@ -2896,12 +2896,12 @@ function renderStoreTable() {
     return;
   }
   tbody.innerHTML = top.map((s,i) => {
-    const pctColor = s.pct>1.8?'var(--danger)':s.pct>1.3?'#fb923c':s.pct>0.99?'var(--warn)':'var(--accent)';
+    const pctColor = s.pct>1.8?'var(--danger)':s.pct>1.3?'#fb923c':s.pct>impactTarget()?'var(--warn)':'var(--accent)';
     const trendCells = trendData.map(td => {
       const d = td[s.sid];
       if (!d || !d.orders) return '<td class="num" style="color:var(--text-dim);">—</td>';
       const p = (d.igcc / d.orders) * 100;
-      const c = p>1.8?'var(--danger)':p>1.3?'#fb923c':p>0.99?'var(--warn)':'var(--accent)';
+      const c = p>1.8?'var(--danger)':p>1.3?'#fb923c':p>impactTarget()?'var(--warn)':'var(--accent)';
       return `<td class="num" style="color:${c};">${p.toFixed(2)}%</td>`;
     }).join('');
     return `<tr>
@@ -3786,8 +3786,8 @@ function renderCharts() {
     type:'bar',
     data:{ labels: sorted,
       datasets:[
-        { label:'IGCC %', data: pcts, backgroundColor: pcts.map(p => p>1.8?'#f87171':p>1.3?'#fb923c':p>0.99?'#fbbf24':'#4ade80'), borderRadius:4 },
-        { label:'Target', data: sorted.map(()=>0.99), type:'line', borderColor:'#4ade80', borderDash:[6,4], borderWidth:2, pointRadius:0 }
+        { label:'IGCC %', data: pcts, backgroundColor: pcts.map(p => p>1.8?'#f87171':p>1.3?'#fb923c':p>impactTarget()?'#fbbf24':'#4ade80'), borderRadius:4 },
+        { label:'Target', data: sorted.map(()=>impactTarget()), type:'line', borderColor:'#4ade80', borderDash:[6,4], borderWidth:2, pointRadius:0 }
       ]
     },
     options:{ responsive:true, maintainAspectRatio:false,
@@ -4520,9 +4520,9 @@ function downloadTableCSV(tableKey) {
       }
       return { name, ..._c, pct: cityPct(name, wk), pctPrev: cityPct(name, prevWeek), w: cityWk(name, wk) };
     }).filter(Boolean).sort((a, b) => b.pct - a.pct);
-    const statusFor = p => p > 1.8 ? 'Critical' : p > 1.3 ? 'High' : p > 0.99 ? 'Moderate' : 'On Target';
+    const statusFor = p => p > 1.8 ? 'Critical' : p > 1.3 ? 'High' : p > impactTarget() ? 'Moderate' : 'On Target';
     ranked.forEach((c, i) => {
-      const gap = c.pct - 0.99;
+      const gap = c.pct - impactTarget();
       const reduction = Math.max(0, Math.round(c.w.orders * gap / 100));
       const trend = c.pct - c.pctPrev;
       const trendStr = (wk === 'W20' || c.pctPrev === 0) ? '' : (trend > 0 ? '+' : '') + trend.toFixed(2) + 'pp';
@@ -4787,13 +4787,13 @@ function buildSheetTSV() {
   lines.push('');
   // ----- City table (all cities in scope, selected week) -----
   lines.push(['Rank', 'City', 'Tier', 'Region', 'Orders', 'IGCC (' + wkL + ')', 'IGCC %',
-              'vs ' + prevL + ' (pp)', 'Status', 'Gap vs 0.99% (pp)', 'Reduction to target', 'Top SKU'].join('\t'));
+              'vs ' + prevL + ' (pp)', 'Status', 'Gap vs target (pp)', 'Reduction to target', 'Top SKU'].join('\t'));
   const ranked = citiesInScope().map(name => Object.assign({ name }, DATA.cities[name], {
     pct: cityPct(name, wk), pctPrev: cityPct(name, prevWeek), w: cityWk(name, wk)
   })).sort((a, b) => b.pct - a.pct);
-  const statusFor = pct => pct > 1.8 ? 'Critical' : pct > 1.3 ? 'High' : pct > 0.99 ? 'Moderate' : 'On Target';
+  const statusFor = pct => pct > 1.8 ? 'Critical' : pct > 1.3 ? 'High' : pct > impactTarget() ? 'Moderate' : 'On Target';
   ranked.forEach((c, i) => {
-    const gap = c.pct - 0.99;
+    const gap = c.pct - impactTarget();
     const reduction = Math.max(0, Math.round(c.w.orders * gap / 100));
     const trend = c.pct - c.pctPrev;
     const trendStr = (wk === 'W20' || c.pctPrev === 0) ? '' : (trend > 0 ? '+' : '') + trend.toFixed(2);
@@ -4928,6 +4928,24 @@ function resetData() {
 
 DATA.skusByCity = SKUS_BY_WEEK[currentWeek] || SKUS_BY_WEEK[Object.keys(SKUS_BY_WEEK).sort(function(a,b){return parseInt(a.slice(1))-parseInt(b.slice(1));}).pop()] || {};
 saveData();
+
+// Monthly targets (user-set 2026-10-12): Oct 2026 = 1.25%; default otherwise 1.25%.
+// Resolved from the current period's end month (date-range mode) or the active week.
+// Defined in the main script block so renderKPIs/renderBanner (called below) can use it.
+function impactTarget(){
+  var wkNum = parseInt(String(currentWeek).slice(1), 10) || 1;
+  var m = null;
+  if (dateRange && dateRange.to) {
+    m = parseInt(dateRange.to.slice(5, 7), 10);
+  } else if (typeof WEEK_RANGES !== 'undefined' && WEEK_RANGES['W' + wkNum]) {
+    m = parseInt(WEEK_RANGES['W' + wkNum].end.slice(5, 7), 10);
+  }
+  var y = dateRange && dateRange.to ? parseInt(dateRange.to.slice(0, 4), 10) : (typeof currentYear !== 'undefined' ? +currentYear : 2026);
+  // Monthly targets — add rows here as new months get targets
+  var M = {'2026': {10: 1.25}};
+  return (M[y] && M[y][m] != null) ? M[y][m] : 1.25;
+}
+
 renderAll();
 </script>
 
@@ -4993,21 +5011,6 @@ var impactSort = {key:'pp', dir:-1};   // default: biggest pp-contribution to ov
 var _lastImpactRows = [];
 var _lastImpactItemRows = [];
 
-// Monthly targets (user-set 2026-10-12): Oct 2026 = 1.25%; default otherwise 1.25%.
-// Resolved from the current period's end month (date-range mode) or the active week.
-function impactTarget(){
-  var wkNum = parseInt(String(currentWeek).slice(1), 10) || 1;
-  var m = null;
-  if (dateRange && dateRange.to) {
-    m = parseInt(dateRange.to.slice(5, 7), 10);
-  } else if (typeof WEEK_RANGES !== 'undefined' && WEEK_RANGES['W' + wkNum]) {
-    m = parseInt(WEEK_RANGES['W' + wkNum].end.slice(5, 7), 10);
-  }
-  var y = dateRange && dateRange.to ? parseInt(dateRange.to.slice(0, 4), 10) : (typeof currentYear !== 'undefined' ? +currentYear : 2026);
-  // Monthly targets — add rows here as new months get targets
-  var M = {'2026': {10: 1.25}};
-  return (M[y] && M[y][m] != null) ? M[y][m] : 1.25;
-}
 
 function impactMonthLbl(){
   var MONTHS = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
