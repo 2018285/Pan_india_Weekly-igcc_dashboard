@@ -514,7 +514,7 @@
   </div>
 
   <div class="panel" id="panel-impact-topitems" style="margin-bottom:24px;">
-    <div class="panel-header"><h2 style="color:var(--warn)" id="h-impact-items">Top 5 Articles to Deep-Dive</h2><span class="edit-hint" id="impact-items-hint" style="margin:0;">biggest IGCC drivers across the above-target cities in scope · ranked by recoverable IGCC</span><button class="btn" onclick="exportImpactItems()" style="margin-left:auto;font-size:11px;padding:4px 10px;">&#11015; Download CSV</button></div>
+    <div class="panel-header"><h2 style="color:var(--warn)" id="h-impact-items">Top 5 Articles to Deep-Dive</h2><span class="edit-hint" id="impact-items-hint" style="margin:0;">biggest IGCC drivers across the above-target cities in scope · ranked by recoverable IGCC</span><label for="sel-impact-topn" style="font-size:12px;color:var(--text-dim);margin-left:auto;">Show</label><select id="sel-impact-topn" onchange="setImpactTopN(this.value)" style="background:#1a2332;color:#e8ecef;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:12px;"><option value="5" selected>Top 5</option><option value="10">Top 10</option><option value="15">Top 15</option><option value="20">Top 20</option><option value="25">Top 25</option><option value="ALL">All</option></select><button class="btn" onclick="exportImpactItems()" style="font-size:11px;padding:4px 10px;">&#11015; Download CSV</button></div>
     <div id="impact-items-intro" style="font-size:12px;color:#94a3b8;margin-bottom:10px;"></div>
     <div style="overflow-x:auto;"><table>
       <thead><tr>
@@ -5163,14 +5163,16 @@ function renderImpactItems(cityRows, TARGET, scopeAgg){
     return { code: code, name: name, ig: v.ig, tot: v.tot, inc: inc, recover: recover, worstCities: wcs.slice(0, 5), rca: m };
   }).filter(function(r){ return r.inc > TARGET; });
   rows.sort(function(a, b){ return b.recover - a.recover || b.ig - a.ig; });
-  var top5 = rows.slice(0, 5);
+  var n = parseInt(document.getElementById('sel-impact-topn') ? document.getElementById('sel-impact-topn').value : '5', 10);
+  if (isNaN(n)) n = rows.length;
+  var top5 = rows.slice(0, n);
   _lastImpactItemRows = top5;
   var offTotIG = rows.reduce(function(s, r){ return s + r.ig; }, 0);
   var totRecover = rows.reduce(function(s, r){ return s + r.recover; }, 0);
-  document.getElementById('h-impact-items').textContent = 'Top 5 Articles to Deep-Dive — ' + offCities.length + ' cities above ' + TARGET.toFixed(2) + '%';
+  var topRecover = top5.reduce(function(s, r){ return s + r.recover; }, 0);
+  document.getElementById('h-impact-items').textContent = (isNaN(parseInt(document.getElementById('sel-impact-topn').value, 10)) ? 'All Articles' : 'Top ' + n + ' Articles') + ' to Deep-Dive — ' + offCities.length + ' cities above ' + TARGET.toFixed(2) + '%';
   if (intro) intro.innerHTML = 'Scope: the <strong style="color:var(--danger)">' + offCities.length + ' above-target cities</strong> in the current view (' + offCities.slice(0, 8).map(function(r){ return r.name; }).join(', ') + (offCities.length > 8 ? ' +' + (offCities.length - 8) + ' more' : '') + '). Fixing these articles brings the biggest IGCC reduction — ranked by recoverable orders at the ' + TARGET.toFixed(2) + '% target.';
-  if (!top5.length) { tb.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-dim);padding:20px">No article-level data for the above-target cities in this period.</td></tr>'; if (foot) foot.innerHTML = ''; return; }
-  tb.innerHTML = top5.map(function(r, i){
+  if (!top5.length) { tb.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-dim);padding:20px">No article-level data for the above-target cities in this period.</td></tr>'; if (foot) foot.innerHTML = ''; return; }  tb.innerHTML = top5.map(function(r, i){
     var incCls = r.inc > 3 ? 'color:var(--danger);font-weight:600' : 'color:var(--warn)';
     var wc = r.worstCities.map(function(w){ return '<span title="' + w.city + ': ' + w.ig + ' IGCC / ' + w.tot + ' orders = ' + w.inc.toFixed(2) + '%" style="margin-right:6px;white-space:nowrap">' + w.city + ' <span style="color:var(--text-dim);font-size:10px">' + w.inc.toFixed(1) + '%</span></span>'; }).join('');
     var maxR = top5[0].recover || 1;
@@ -5187,7 +5189,27 @@ function renderImpactItems(cityRows, TARGET, scopeAgg){
       '<td style="font-size:11px">' + impactRcaCell(r.rca) + '</td>' +
       '<td style="font-size:11px;max-width:340px;min-width:220px;white-space:normal;line-height:1.5;color:var(--text-dim)">' + action + '</td></tr>';
   }).join('');
-  if (foot) foot.innerHTML = '<strong style="color:var(--warn);">Top 5 articles = ' + top5.reduce(function(s, r){ return s + r.recover; }, 0).toLocaleString() + ' recoverable IGCC orders</strong> of ' + totRecover.toLocaleString() + ' total recoverable across ' + rows.length + ' articles &nbsp;·&nbsp; all above-target cities combined: ' + offTotIG.toLocaleString() + ' IGCC orders';
+  if (foot) {
+    // Projected final IGCC% for the above-target-city scope if the shown articles are brought to target
+    var offAgg = offCities.reduce(function(a, r){ a[0] += r.ig; a[1] += r.tot; return a; }, [0, 0]);
+    var offPct = offAgg[1] ? (offAgg[0] / offAgg[1] * 100) : 0;
+    var projIg = offAgg[0] - topRecover;
+    var projPct = offAgg[1] ? (projIg / offAgg[1] * 100) : offPct;
+    var scopeIg = scopeAgg[0], scopeOrd = scopeAgg[1];
+    var scopeProjPct = scopeOrd ? ((scopeIg - topRecover) / scopeOrd * 100) : null;
+    var scopePctNow = scopeOrd ? (scopeIg / scopeOrd * 100) : null;
+    var remRec = rows.length > n ? rows.slice(n).reduce(function(s, r){ return s + r.recover; }, 0) : 0;
+    foot.innerHTML = '<strong style="color:var(--warn);">Shown ' + top5.length + ' articles = ' + topRecover.toLocaleString() + ' recoverable IGCC orders</strong> of ' + totRecover.toLocaleString() + ' total recoverable across ' + rows.length + ' articles &nbsp;·&nbsp; ' +
+      'above-target cities: <strong>' + offPct.toFixed(2) + '%</strong> → <strong style="color:var(--accent)">' + projPct.toFixed(2) + '%</strong> (−' + (offPct - projPct).toFixed(2) + 'pp)' +
+      (scopeProjPct != null ? ' &nbsp;·&nbsp; overall scope: <strong>' + scopePctNow.toFixed(2) + '%</strong> → <strong style="color:var(--accent)">' + scopeProjPct.toFixed(2) + '%</strong> (−' + (scopePctNow - scopeProjPct).toFixed(2) + 'pp)' : '') +
+      (remRec > 0 ? ' &nbsp;·&nbsp; next ' + (rows.length - n) + ' articles hold ' + remRec.toLocaleString() + ' more recoverable' : '');
+  }
+}
+
+function setImpactTopN(v){
+  var sel = document.getElementById('sel-impact-topn');
+  if (sel) sel.value = v;
+  renderImpactTab();
 }
 
 function sortImpact(k){
