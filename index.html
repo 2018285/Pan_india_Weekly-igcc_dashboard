@@ -544,8 +544,8 @@
         <th>#</th><th>Store ID</th><th>Store</th><th>City</th><th>Tier</th>
         <th class="num" data-imsort="ig">IGCC</th>
         <th class="num" data-imsort="tot">Orders</th>
-        <th class="num" data-imsort="inc" title="Store IGCC ÷ orders">IGCC%</th>
-        <th class="num" data-imsort="prevpct" title="Store IGCC% in the previous week">Prev IGCC%</th>
+        <th class="num" data-imsort="inc" id="th-ims-inc" title="Store IGCC ÷ orders for the week shown in the header">IGCC%</th>
+        <th class="num" data-imsort="prevpct" id="th-ims-prev" title="Store IGCC% in the previous week">Prev IGCC%</th>
         <th class="num" data-imsort="excess" title="IGCC orders above the active monthly target — removing these brings the store to target">IGCC over target</th>
         <th class="num" data-imsort="tgtig" title="Allowed IGCC orders at the target rate = orders × target%. Constant target — stores already at/below this are not pushed higher.">Target IGCC</th>
         <th class="num" data-imsort="reduceprev" title="IGCC orders to remove vs the previous week's level to reach the target">Reduction vs Prev (to target)</th>
@@ -5209,6 +5209,10 @@ function renderImpactStores(cityRows, TARGET, scopeAgg){
 
   var cur = aggStores(weeksUsed);
   var prev = aggStores(prevWeeksUsed);
+  var thInc = document.getElementById('th-ims-inc');
+  var thPrev = document.getElementById('th-ims-prev');
+  if (thInc) thInc.textContent = 'IGCC% ' + weeksUsed.join(', ');
+  if (thPrev) thPrev.textContent = 'Prev IGCC% ' + prevWeeksUsed.join(', ');
   var rows = Object.keys(cur).map(function(sid){
     var c = cur[sid];
     var inc = c.tot ? (c.ig / c.tot * 100) : 0;
