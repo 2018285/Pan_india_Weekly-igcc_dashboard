@@ -502,15 +502,15 @@
       <thead><tr>
         <th data-impsort="name">City</th><th>Tier</th>
         <th class="num" data-impsort="ig">IGCC</th><th class="num" data-impsort="tot">Orders</th>
-        <th class="num" data-impsort="inc" title="City's own IGCC% for the selected week/range">IGCC%</th>
+        <th class="num" data-impsort="inc" id="th-imc-inc" title="City's own IGCC% for the selected week/range">IGCC%</th>
         <th class="num" data-impsort="pp" title="pp-contribution to the overall scope IGCC% = city IGCC ÷ scope orders × 100. Higher = this city pushes the overall % up more.">Impact (pp)</th>
         <th class="num" data-impsort="share" title="City's share of total scope IGCC orders">Share of IGCC</th>
         <th class="num" data-impsort="excess" title="IGCC orders above the active monthly target. If this city drops to target, the scope overall improves by this many orders.">IGCC over target</th>
         <th class="num" data-impsort="tgtig" title="Allowed IGCC orders at the target rate = orders × target%. Constant target — cities already at/below this are not pushed higher.">Target IGCC</th>
-        <th class="num" data-impsort="prevpct" title="City's IGCC% in the previous week">Prev IGCC%</th>
+        <th class="num" data-impsort="prevpct" id="th-imc-prev" title="City's IGCC% in the previous week">Prev IGCC%</th>
         <th class="num" data-impsort="reduceprev" title="IGCC orders to remove vs the previous week's level to reach the target: max(0, this-week IGCC − orders×target%). If the city repeats last week's rate, this is how much extra must be cut.">Reduction vs Prev (to target)</th>
         <th class="num" data-impsort="fixedpct" title="What the scope overall IGCC% would become if this single city dropped to the target (all else unchanged)">Overall if fixed</th>
-        <th class="num" data-impsort="prev" title="Change vs previous week (pp)">vs Prev</th>
+        <th class="num" data-impsort="prev" id="th-imc-vsprev" title="Change vs previous week (pp)">vs Prev</th>
         <th data-impsort="rca" title="Dominant RCA root-cause bucket for this city">RCA Bucket</th>
         <th style="text-align:left" title="Auto-generated action for this city, from its RCA bucket and gap vs target">Suggested Action</th>
       </tr></thead><tbody id="tb-impact"></tbody>
@@ -679,7 +679,7 @@
     <table>
       <thead><tr>
         <th>#</th><th>Item Code</th><th>SKU</th>
-        <th class="num" id="th-sku-igcc">IGCC</th><th class="num">Orders</th><th class="num">IGCC%</th>
+        <th class="num" id="th-sku-igcc">IGCC</th><th class="num">Orders</th><th class="num" id="th-sku-igccpct">IGCC%</th>
         <th class="num" id="th-sku-prev">Prev IGCC</th><th class="num">WoW</th>
         <th class="num" title="Change in IGCC rate (igcc/orders), not raw count">WoW IGCC%</th>
         <th style="min-width:180px;">Top Reasons (count)</th>
@@ -2987,6 +2987,7 @@ function renderSkuTable() {
   const _prevWk = 'W' + (parseInt(currentWeek.slice(1),10) - 1);
   const _el1 = document.getElementById('th-sku-igcc'); if (_el1) _el1.textContent = currentWeek + ' IGCC';
   const _el2 = document.getElementById('th-sku-prev'); if (_el2) _el2.textContent = _prevWk + ' IGCC';
+  const _el3 = document.getElementById('th-sku-igccpct'); if (_el3) _el3.textContent = currentWeek + ' IGCC%';
   const cityName = currentCity === 'PAN' ? (currentTier==='ALL'?'PAN India':currentTier==='1'?'PAN Tier-1':'PAN Tier-2') : DATA.cities[currentCity].name;
   document.getElementById('h-top10-title').textContent = `Top SKUs — ${cityName}`;
   const tbody = document.getElementById('tbody-skus');
@@ -4559,7 +4560,7 @@ function downloadTableCSV(tableKey) {
       }
     } else {
       const skus = currentSkusWithCarryForward(currentTopNSku);
-      rows.push(['#', 'Item Code', 'SKU', wk + ' IGCC', 'Orders', 'IGCC%', prevWk + ' IGCC', 'WoW', 'WoW IGCC%', 'Top Reasons', 'Ctrl', 'Ctrl%', 'City IGCC↓@50%']);
+      rows.push(['#', 'Item Code', 'SKU', wk + ' IGCC', 'Orders', wk + ' IGCC%', prevWk + ' IGCC', 'WoW', 'WoW IGCC%', 'Top Reasons', 'Ctrl', 'Ctrl%', 'City IGCC↓@50%']);
       skus.forEach((s, idx) => {
         const _rsTot = Object.values(s.reasons || {}).reduce((a, b) => a + b, 0);
         const ctrl = _rsTot || (s.dp + s.src);
@@ -4807,7 +4808,7 @@ function buildSheetTSV() {
     if (skus && skus.length) {
       lines.push('');
       lines.push(['Top SKUs — ' + scope + ' (' + wkL + ')'].join('\t'));
-      lines.push(['#', 'Item Code', 'SKU', wkL + ' IGCC', 'Orders', 'IGCC %', prevL + ' IGCC', 'WoW', 'WoW IGCC%',
+      lines.push(['#', 'Item Code', 'SKU', wkL + ' IGCC', 'Orders', wkL + ' IGCC %', prevL + ' IGCC', 'WoW', 'WoW IGCC%',
                   'DP', 'Sourcing', 'POD', 'CX'].join('\t'));
       skus.forEach((s, i) => {
         const igcc = parseNum(s.igcc, 0), orders = parseNum(s.orders, 0), prev = parseNum(s.igccPrev, 0);
@@ -5116,6 +5117,11 @@ function renderImpactTab(){
     : currentCity;
   var periodLbl = dateRange ? (dateRange.from + ' → ' + dateRange.to) : currentWeek;
   document.getElementById('h-impact').textContent = 'IGCC Impact — City Contribution — ' + scopeName + ' · ' + periodLbl + ' · target ' + TARGET.toFixed(2) + '% (' + impactMonthLbl() + ')';
+  var curWkNum = parseInt(String(currentWeek).slice(1), 10) || 1;
+  var prevWkLbl = 'W' + (curWkNum - 1);
+  var _thCi = document.getElementById('th-imc-inc'); if (_thCi) _thCi.textContent = 'IGCC% ' + (dateRange ? (dateRange.from + '→' + dateRange.to) : currentWeek);
+  var _thCp = document.getElementById('th-imc-prev'); if (_thCp) _thCp.textContent = 'Prev IGCC% ' + prevWkLbl;
+  var _thCv = document.getElementById('th-imc-vsprev'); if (_thCv) _thCv.textContent = 'vs ' + prevWkLbl;
   document.getElementById('tb-impact').innerHTML = rows.map(function(r){
     var incCls = r.inc > 1.5 ? 'color:var(--danger);font-weight:600' : r.inc > TARGET ? 'color:var(--warn)' : 'color:var(--accent)';
     var maxPp = rows[0] && rows[0].pp > 0 ? rows[0].pp : 1;
@@ -5321,7 +5327,8 @@ function exportImpactStores(){
   if (!_lastImpactStoreRows.length) { toast('Nothing to export'); return; }
   var TARGET = impactTarget();
   var clean = function(v){ var s = String(v == null ? '' : v).replace(/<[^>]*>/g, '').replace(/[\r\n]/g, ' ').trim(); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-  var rowsOut = [['Store ID','Store','City','Tier','IGCC','Orders','IGCC%','Target IGCC','Target %','Prev IGCC%','IGCC over target','Reduction vs Prev (to target)','Action Plan','Impact pp']].concat(
+  var csvWk = parseInt(String(currentWeek).slice(1), 10) || 1;
+  var rowsOut = [['Store ID','Store','City','Tier','IGCC W' + csvWk,'Orders','IGCC% W' + csvWk,'Target IGCC','Target %','Prev IGCC% W' + (csvWk-1),'IGCC over target','Reduction vs Prev (to target)','Action Plan','Impact pp']].concat(
     _lastImpactStoreRows.map(function(r){
       return [r.sid, r.name, r.city, 'T' + r.tier, r.ig, r.tot, r.inc.toFixed(2),
               r.tgtig, TARGET.toFixed(2),
@@ -5456,7 +5463,8 @@ function exportImpact(){
   if (!_lastImpactRows.length) { toast('Nothing to export'); return; }
   var TARGET = impactTarget();
   var clean = function(v){ var s = String(v == null ? '' : v).replace(/<[^>]*>/g, '').replace(/[\r\n]/g, ' ').trim(); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-  var rowsOut = [['City','Tier','IGCC','Orders','IGCC%','Impact pp','Share of IGCC %','IGCC over target','Target IGCC','Target %','Prev IGCC%','Reduction vs Prev (to target)','Overall if fixed %','vs Prev pp','RCA Bucket','Suggested Action']].concat(
+  var csvWk = parseInt(String(currentWeek).slice(1), 10) || 1;
+  var rowsOut = [['City','Tier','IGCC W' + csvWk,'Orders','IGCC% W' + csvWk,'Impact pp','Share of IGCC %','IGCC over target','Target IGCC','Target %','Prev IGCC% W' + (csvWk-1),'Reduction vs Prev (to target)','Overall if fixed %','vs Prev W' + (csvWk-1) + ' pp','RCA Bucket','Suggested Action']].concat(
     _lastImpactRows.map(function(r){
       var rcaT = impactRcaTop(r.rca);
       var delta = (r.prev != null && r.inc != null) ? (r.inc - r.prev) : null;
