@@ -117,6 +117,10 @@
   th, td { padding: 9px 8px; text-align: left; border-bottom: 1px solid var(--border); }
   th { color: var(--text-dim); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; background: var(--panel-2); position: sticky; top: 0; }
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--text); background: rgba(96,165,250,0.08); }
+  th.sortable .sort-ar { font-size: 9px; margin-left: 3px; opacity: .6; }
+  th.sortable.sorted-asc .sort-ar, th.sortable.sorted-desc .sort-ar { opacity: 1; color: var(--accent); }
   tr:hover { background: rgba(96, 165, 250, 0.05); }
 
   /* Week-wise Article Trend: frozen Article column */
@@ -451,7 +455,7 @@
 <div class="city-tabs" id="city-tabs" style="margin-bottom:16px;"></div>
 
 <div id="toptab-exec" style="display:none;">
-  <div class="panel" style="margin-bottom:24px;">
+  <div class="panel" id="panel-exec-grid" style="margin-bottom:24px;">
     <div class="panel-header" style="flex-wrap:wrap;gap:8px;">
       <h2 class="pink">Executive Summary — Category-wise IGCC%</h2>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto;">
@@ -560,7 +564,7 @@
 <div id="toptab-dashboard">
 
 <div id="view-year" style="display:none;">
-  <div class="panel" style="margin-bottom:24px;">
+  <div class="panel" id="year-view-panel" style="margin-bottom:24px;">
     <div class="panel-header">
       <h2 class="accent">📆 IGCC% — Multi-Year Trend</h2>
       <span style="font-size:11px;color:var(--text-dim);">PAN India row uses published overall %. City rows use city-level FnV orders + IGCC count. Week-over-week: up vs prior week = <span style="color:var(--danger);">red</span>, down = <span style="color:var(--accent);">green</span>.</span>
@@ -603,7 +607,6 @@
           </div>
         </div>
       </div>
-    </div>
     <div id="year-yoy-summary" style="margin-bottom:14px;"></div>
     <div id="year-table-container" style="overflow-x:auto;max-height:70vh;overflow-y:auto;"></div>
   </div>
@@ -670,7 +673,7 @@
   </div>
 </div>
 
-<div class="panel" style="margin-bottom:24px;">
+<div class="panel" id="panel-sku-table" style="margin-bottom:24px;">
   <div class="panel-header">
     <h2 class="info" id="h-top10-title">Top SKUs — Detailed Breakdown</h2>
     <div style="display:flex;align-items:center;gap:8px;"><label for="sel-topn-sku" style="font-size:12px;color:var(--text-dim);">Show</label><select id="sel-topn-sku" onchange="setTopNSku(this.value)" style="background:#1a2332;color:#e8ecef;border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-size:12px;"><option value="10">Top 10</option><option value="15" selected>Top 15</option><option value="20">Top 20</option><option value="25">Top 25</option><option value="30">Top 30</option><option value="50">Top 50</option><option value="ALL">All Articles</option></select><button class="btn" onclick="downloadTableCSV('sku')" title="Download SKU table as CSV">⬇ CSV</button><div class="edit-hint" id="hint-top10"><strong>City IGCC↓ @50%</strong> = if this article's complaints are halved, the % drop in the city's total IGCC (↓ = absolute complaints saved). · Edit Mode: click any cell (IGCC, Orders, DP, Sourcing, POD, CX).</div></div>
@@ -692,7 +695,7 @@
   </div>
 </div>
 
-<div class="panel" style="margin-bottom:24px;">
+<div class="panel" id="panel-wow" style="margin-bottom:24px;">
   <div class="panel-header">
     <h2 class="accent" id="h-wow-title">W24 → W25 Article Comparison (Top 10)</h2>
     <div style="display:flex;align-items:center;gap:8px;"><label for="sel-topn-wow" style="font-size:12px;color:var(--text-dim);">Show</label><select id="sel-topn-wow" onchange="setTopNWow(this.value)" style="background:#1a2332;color:#e8ecef;border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-size:12px;"><option value="10">Top 10</option><option value="15" selected>Top 15</option><option value="20">Top 20</option><option value="25">Top 25</option><option value="30">Top 30</option><option value="50">Top 50</option><option value="ALL">All Articles</option></select><button class="btn" onclick="downloadTableCSV('wow')" title="Download WoW article table as CSV">⬇ CSV</button><div class="edit-hint">Edit Mode: click the current-week IGCC cell to update the figure for that article (W-2 and W-1 snapshots already loaded)</div></div>
@@ -720,7 +723,7 @@
 
 
 
-<div class="panel" style="margin-bottom:24px;">
+<div class="panel" id="panel-scenarios" style="margin-bottom:24px;">
   <div class="panel-header" style="margin-bottom:4px;">
     <h2 class="warn" style="margin:0;">Reduction Scenarios <span id="scenario-scope" style="color: var(--text-dim); font-weight:400; font-size:12px; margin-left:8px;"></span></h2>
     <div style="display:flex;align-items:center;gap:8px;"><label for="sel-topn-scenario" style="font-size:12px;color:var(--text-dim);">Show</label><select id="sel-topn-scenario" onchange="setTopNScenario(this.value)" style="background:#1a2332;color:#e8ecef;border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-size:12px;"><option value="10">Top 10</option><option value="15" selected>Top 15</option><option value="20">Top 20</option><option value="25">Top 25</option><option value="30">Top 30</option><option value="50">Top 50</option><option value="ALL">All Articles</option></select><button class="btn" onclick="downloadTableCSV('scenario')" title="Download scenario table as CSV">⬇ CSV</button></div>
@@ -4126,6 +4129,7 @@ function switchView(v){
     // Auto-render with current year — no manual selection needed
     var yr = window._yearViewYear || '2026';
     try{ renderYearView(yr); }catch(e){}
+    try { setupDomSorts(); } catch(e) {}
   } else {
     try{ renderCharts(); }catch(e){}
   }
@@ -4475,6 +4479,7 @@ function renderAll() {
   try { if(document.getElementById('toptab-exec') && document.getElementById('toptab-exec').style.display!=='none') renderExecSummary(); } catch(e) {}
   try { if(document.getElementById('toptab-images') && document.getElementById('toptab-images').style.display!=='none') renderWeeklyImages(); } catch(e) {}
   try { if(document.getElementById('toptab-impact') && document.getElementById('toptab-impact').style.display!=='none') renderImpactTab(); } catch(e) {}
+  try { setupDomSorts(); } catch(e) { console.error('DOM sort setup failed:', e); }
 }
 
 // ========== IMPORT / EXPORT / RESET ==========
@@ -4946,6 +4951,80 @@ function impactTarget(){
   return (M[y] && M[y][m] != null) ? M[y][m] : 1.25;
 }
 
+// ---- Generic click-to-sort for main-dashboard tables (asc on 1st click, desc on 2nd) ----
+// Works on the rendered DOM, so it survives weekly update scripts (markup/data only, no logic changes).
+var _domSortState = {};
+function applyDomSort(tblId){
+  var st = _domSortState[tblId] || {};
+  var tbl = document.getElementById(tblId);
+  if (!tbl) return;
+  var tbody = tbl.querySelector('tbody');
+  var thead = tbl.querySelector('thead');
+  if (!tbody || !thead) return;
+  var idx = st.idx, dir = st.dir || 1;
+  thead.querySelectorAll('th').forEach(function(th, i){
+    th.classList.remove('sorted-asc','sorted-desc');
+    var ar = th.querySelector('.sort-ar');
+    if (ar) ar.remove();
+    if (i === idx && st.idx != null) {
+      th.classList.add(dir === 1 ? 'sorted-asc' : 'sorted-desc');
+      var s = document.createElement('span'); s.className = 'sort-ar';
+      s.textContent = dir === 1 ? '▲' : '▼';
+      th.appendChild(s);
+    }
+  });
+  if (idx == null) return;
+  var rows = Array.from(tbody.querySelectorAll('tr'));
+  var parseNum = function(t){
+    var n = parseFloat(String(t).replace(/[,%\s]/g,'').replace(/[₹]/g,''));
+    return isNaN(n) ? null : n;
+  };
+  rows.sort(function(a, b){
+    var ac = a.cells[idx], bc = b.cells[idx];
+    if (!ac || !bc) return 0;
+    var at = ac.textContent.trim(), bt = bc.textContent.trim();
+    var an = parseNum(at), bn = parseNum(bt);
+    if (an != null && bn != null) return dir * (an - bn);
+    if (at === '—' || at === '') return 1;
+    if (bt === '—' || bt === '') return -1;
+    return dir * at.localeCompare(bt);
+  });
+  rows.forEach(function(r){ tbody.appendChild(r); });
+  // re-apply tfoot (appendChild moved rows after it? tfoot is separate element, safe)
+}
+function wireDomSort(tblId){
+  var tbl = document.getElementById(tblId);
+  if (!tbl) return;
+  var thead = tbl.querySelector('thead');
+  if (!thead || thead.dataset.sortWired) return;
+  thead.dataset.sortWired = '1';
+  thead.addEventListener('click', function(e){
+    var th = e.target.closest('th');
+    if (!th || !thead.contains(th)) return;
+    var ths = Array.from(thead.querySelectorAll('th'));
+    var idx = ths.indexOf(th);
+    if (idx < 0) return;
+    var st = _domSortState[tblId] || {};
+    if (st.idx === idx) { st.dir = -st.dir; } else { st.idx = idx; st.dir = 1; }
+    _domSortState[tblId] = st;
+    applyDomSort(tblId);
+  });
+}
+var DOM_SORT_TABLES = ['panel-city-table','panel-store-table','panel-sku-table','panel-wow','panel-scenarios','week-article-panel','panel-exec-grid','year-view-panel'];
+function setupDomSorts(){
+  DOM_SORT_TABLES.forEach(function(id){
+    var panel = document.getElementById(id);
+    if (!panel) return;
+    var tbl = panel.querySelector('table');
+    if (!tbl) return;
+    // mark all th sortable + add persistent table id
+    if (!tbl.id) { tbl.id = 'dst-' + id; }
+    tbl.querySelectorAll('thead th').forEach(function(th){ th.classList.add('sortable'); });
+    wireDomSort(tbl.id);
+    applyDomSort(tbl.id);
+  });
+}
+
 renderAll();
 </script>
 
@@ -5004,6 +5083,7 @@ function showTopTab(v){
   if(v==='exec') renderExecSummary();
   if(v==='images') renderWeeklyImages();
   if(v==='impact') renderImpactTab();
+  try { setupDomSorts(); } catch(e) { console.error('DOM sort setup failed:', e); }
 }
 
 // ---- IGCC Impact tab: which cities push the overall IGCC% up (modeled on the Daily IGCC dashboard) ----
