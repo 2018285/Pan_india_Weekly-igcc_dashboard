@@ -5281,7 +5281,23 @@ function renderImpactStores(cityRows, TARGET, scopeAgg){
   }).join('');
   var shownExcess = top.reduce(function(s, r){ return s + r.excess; }, 0);
   var shownReduce = top.reduce(function(s, r){ return s + r.reducePrev; }, 0);
-  if (foot) foot.innerHTML = '<strong style="color:var(--warn);">Shown ' + top.length + ' stores = ' + shownExcess.toLocaleString() + ' excess IGCC orders over target</strong> · ' + shownReduce.toLocaleString() + ' reduction needed vs prev to hit ' + TARGET.toFixed(2) + '% &nbsp;·&nbsp; of ' + offStores.length + ' above-target stores total ' + totExcessS.toLocaleString() + ' excess across ' + rows.length + ' stores in scope';
+  if (foot) {
+    // Same projection format as the articles footer: shown stores' recoverable,
+    // then above-target-stores and overall-scope IGCC% if those stores hit target.
+    var offAggS = offStores.reduce(function(a, r){ a[0] += r.ig; a[1] += r.tot; return a; }, [0, 0]);
+    var offPctS = offAggS[1] ? (offAggS[0] / offAggS[1] * 100) : 0;
+    var projIgS = offAggS[0] - shownExcess;
+    var projPctS = offAggS[1] ? (projIgS / offAggS[1] * 100) : offPctS;
+    var scopeIgS = scopeAgg[0], scopeOrdS = scopeAgg[1];
+    var scopeProjS = scopeOrdS ? ((scopeIgS - shownExcess) / scopeOrdS * 100) : null;
+    var scopeNowS = scopeOrdS ? (scopeIgS / scopeOrdS * 100) : null;
+    var remExS = rows.length > top.length ? rows.slice(top.length).reduce(function(s, r){ return s + r.excess; }, 0) : 0;
+    foot.innerHTML = '<strong style="color:var(--warn);">Shown ' + top.length + ' stores = ' + shownExcess.toLocaleString() + ' recoverable IGCC orders</strong> of ' + totExcessS.toLocaleString() + ' total recoverable across ' + offStores.length + ' above-target stores &nbsp;·&nbsp; ' +
+      'above-target stores: <strong>' + offPctS.toFixed(2) + '%</strong> → <strong style="color:var(--accent)">' + projPctS.toFixed(2) + '%</strong> (−' + (offPctS - projPctS).toFixed(2) + 'pp)' +
+      (scopeProjS != null ? ' &nbsp;·&nbsp; overall scope: <strong>' + scopeNowS.toFixed(2) + '%</strong> → <strong style="color:var(--accent)">' + scopeProjS.toFixed(2) + '%</strong> (−' + (scopeNowS - scopeProjS).toFixed(2) + 'pp)' : '') +
+      (remExS > 0 ? ' &nbsp;·&nbsp; next ' + (rows.length - top.length) + ' stores hold ' + remExS.toLocaleString() + ' more recoverable' : '') +
+      ' &nbsp;·&nbsp; reduction needed vs prev to hit ' + TARGET.toFixed(2) + '%: ' + shownReduce.toLocaleString() + ' (shown)';
+  }
 }
 
 function sortImpactStores(k){
