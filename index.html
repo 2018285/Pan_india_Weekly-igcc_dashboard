@@ -506,6 +506,7 @@
         <th class="num" data-impsort="pp" title="pp-contribution to the overall scope IGCC% = city IGCC ÷ scope orders × 100. Higher = this city pushes the overall % up more.">Impact (pp)</th>
         <th class="num" data-impsort="share" title="City's share of total scope IGCC orders">Share of IGCC</th>
         <th class="num" data-impsort="excess" title="IGCC orders above the active monthly target. If this city drops to target, the scope overall improves by this many orders.">IGCC over target</th>
+        <th class="num" data-impsort="tgtig" title="Allowed IGCC orders at the target rate = orders × target%. Constant target — cities already at/below this are not pushed higher.">Target IGCC</th>
         <th class="num" data-impsort="prevpct" title="City's IGCC% in the previous week">Prev IGCC%</th>
         <th class="num" data-impsort="reduceprev" title="IGCC orders to remove vs the previous week's level to reach the target: max(0, this-week IGCC − orders×target%). If the city repeats last week's rate, this is how much extra must be cut.">Reduction vs Prev (to target)</th>
         <th class="num" data-impsort="fixedpct" title="What the scope overall IGCC% would become if this single city dropped to the target (all else unchanged)">Overall if fixed</th>
@@ -546,7 +547,9 @@
         <th class="num" data-imsort="inc" title="Store IGCC ÷ orders">IGCC%</th>
         <th class="num" data-imsort="prevpct" title="Store IGCC% in the previous week">Prev IGCC%</th>
         <th class="num" data-imsort="excess" title="IGCC orders above the active monthly target — removing these brings the store to target">IGCC over target</th>
+        <th class="num" data-imsort="tgtig" title="Allowed IGCC orders at the target rate = orders × target%. Constant target — stores already at/below this are not pushed higher.">Target IGCC</th>
         <th class="num" data-imsort="reduceprev" title="IGCC orders to remove vs the previous week's level to reach the target">Reduction vs Prev (to target)</th>
+        <th style="text-align:left" title="Constant 1.25% target: above-target stores get a cut-to-target plan; at/below-target stores are maintained as-is.">Action Plan</th>
         <th class="num" data-imsort="pp" title="Store pp-contribution to the overall scope IGCC%">Impact (pp)</th>
       </tr></thead><tbody id="tb-impact-stores"></tbody>
     </table></div>
@@ -5071,10 +5074,11 @@ function impactRcaCell(m){
 
 function impactAction(r, scopePct, TARGET){
   var parts = [];
+  var tgtIg = Math.round(r.tot * TARGET / 100);
   if (r.inc > TARGET) {
-    parts.push('Reduce ' + r.name + ' IGCC from ' + r.inc.toFixed(2) + '% to ' + TARGET.toFixed(2) + '% (−' + r.excess.toLocaleString() + ' IGCC orders)');
+    parts.push('Cut ' + r.name + ' IGCC from ' + r.ig.toLocaleString() + ' → ≤' + tgtIg.toLocaleString() + ' orders (' + r.inc.toFixed(2) + '% → ' + TARGET.toFixed(2) + '%, remove ' + r.excess.toLocaleString() + ')');
   } else {
-    parts.push(r.name + ' is at/below target (' + r.inc.toFixed(2) + '% vs ' + TARGET.toFixed(2) + '%) — maintain, low priority');
+    parts.push(r.name + ' is at/below target (' + r.inc.toFixed(2) + '% vs ' + TARGET.toFixed(2) + '%, allowed ≤' + tgtIg.toLocaleString() + ') — maintain, do not push higher');
   }
   var rcaT = impactRcaTop(r.rca);
   if (rcaT) parts.push('Root cause: ' + rcaT.label + ' (' + rcaT.share.toFixed(0) + '% of RCA-tagged)');
@@ -5096,7 +5100,8 @@ function renderImpactTab(){
     var share = scopeAgg[0] ? (r.ig / scopeAgg[0] * 100) : 0;
     // reduction needed vs previous week's IGCC level to land at target this week
     var reducePrev = Math.max(0, Math.round(r.ig - r.tot * TARGET / 100));
-    return Object.assign({}, r, { pp: pp, excess: excess, fixedPct: fixedPct, share: share, reducePrev: reducePrev });
+    var tgtig = Math.round(r.tot * TARGET / 100);
+    return Object.assign({}, r, { pp: pp, excess: excess, fixedPct: fixedPct, share: share, reducePrev: reducePrev, tgtig: tgtig });
   });
   var k = impactSort.key, dir = impactSort.dir;
   rows.sort(function(a, b){
@@ -5125,13 +5130,14 @@ function renderImpactTab(){
       '<td class="num"><div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;"><div style="height:8px;width:' + bw + 'px;min-width:2px;background:' + ppCol + ';border-radius:4px;opacity:.75;"></div><span style="color:' + ppCol + ';font-weight:600">' + r.pp.toFixed(2) + '</span></div></td>' +
       '<td class="num">' + r.share.toFixed(1) + '%</td>' +
       '<td class="num" style="color:' + (r.excess > 0 ? 'var(--danger)' : 'var(--accent)') + '">' + (r.excess > 0 ? r.excess.toLocaleString() : '—') + '</td>' +
+      '<td class="num" style="color:var(--text-dim)">' + r.tgtig.toLocaleString() + '</td>' +
       '<td class="num" style="color:' + (r.prev == null ? 'var(--text-dim)' : r.prev > TARGET ? 'var(--warn)' : 'var(--accent)') + '">' + (r.prev == null ? '—' : r.prev.toFixed(2) + '%') + '</td>' +
       '<td class="num" style="color:' + (r.reducePrev > 0 ? 'var(--danger);font-weight:600' : 'var(--accent)') + '">' + (r.reducePrev > 0 ? r.reducePrev.toLocaleString() : '—') + '</td>' +
       '<td class="num" style="color:' + (r.fixedPct != null && r.fixedPct > TARGET ? 'var(--warn)' : 'var(--accent)') + '">' + (r.fixedPct != null ? r.fixedPct.toFixed(2) + '%' : '—') + '</td>' +
       '<td class="num" style="color:' + (delta == null ? 'var(--text-dim)' : delta > 0 ? 'var(--danger)' : 'var(--accent)') + '">' + (delta == null ? '—' : (delta > 0 ? '+' : '') + delta.toFixed(2) + 'pp') + '</td>' +
       '<td style="font-size:11px">' + impactRcaCell(r.rca) + '</td>' +
       '<td style="font-size:11px;max-width:340px;min-width:220px;white-space:normal;line-height:1.5;color:var(--text-dim)">' + impactAction(r, scopePct, TARGET) + '</td></tr>';
-  }).join('') || '<tr><td colspan="12" style="text-align:center;color:var(--text-dim);padding:20px">No data in scope.</td></tr>';
+  }).join('') || '<tr><td colspan="15" style="text-align:center;color:var(--text-dim);padding:20px">No data in scope.</td></tr>';
   // footer
   var offenders = rows.filter(function(r){ return r.inc > TARGET; });
   var totExcess = offenders.reduce(function(s, r){ return s + r.excess; }, 0);
@@ -5174,7 +5180,7 @@ function renderImpactStores(cityRows, TARGET, scopeAgg){
     }
     if (best === null) {
       if (panel) panel.style.display = '';
-      tb.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--text-dim);padding:20px">Store-level data not available for ' + weeks.join(', ') + ' (rolling window).</td></tr>';
+      tb.innerHTML = '<tr><td colspan="14" style="text-align:center;color:var(--text-dim);padding:20px">Store-level data not available for ' + weeks.join(', ') + ' (rolling window).</td></tr>';
       if (foot) foot.innerHTML = ''; if (intro) intro.innerHTML = '';
       _lastImpactStoreRows = []; return;
     }
@@ -5214,6 +5220,7 @@ function renderImpactStores(cityRows, TARGET, scopeAgg){
       ig: c.ig, tot: c.tot, inc: inc,
       prevPct: pInc,
       excess: Math.max(0, Math.round(c.tot * Math.max(0, inc - TARGET) / 100)),
+      tgtig: Math.round(c.tot * TARGET / 100),
       reducePrev: Math.max(0, Math.round(c.ig - c.tot * TARGET / 100)),
       pp: scopeAgg[1] ? (c.ig / scopeAgg[1] * 100) : 0
     };
@@ -5245,7 +5252,7 @@ function renderImpactStores(cityRows, TARGET, scopeAgg){
   if (hEl) hEl.textContent = (nSel && nSel.value === 'ALL' ? 'All Stores' : 'Top ' + top.length + ' Stores') + ' Impact — ' + scopeName + ' · ' + periodLbl + ' · target ' + TARGET.toFixed(2) + '%';
   if (intro) intro.innerHTML = 'Store-level view of the same scope as the City Contribution table.' + storeFallbackNote + ' <strong style="color:var(--danger)">' + offStores.length + ' stores above ' + TARGET.toFixed(2) + '%</strong> hold ' + totExcessS.toLocaleString() + ' excess IGCC orders · total reduction needed vs prev to reach target: <strong style="color:var(--warn)">' + totReduceS.toLocaleString() + ' orders</strong> across ' + rows.length + ' stores.';
   if (!top.length) {
-    tb.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--text-dim);padding:20px">No store data in the current scope.</td></tr>';
+    tb.innerHTML = '<tr><td colspan="14" style="text-align:center;color:var(--text-dim);padding:20px">No store data in the current scope.</td></tr>';
     if (foot) foot.innerHTML = '';
     return;
   }
@@ -5264,7 +5271,11 @@ function renderImpactStores(cityRows, TARGET, scopeAgg){
       '<td class="num" style="' + incCls + '">' + r.inc.toFixed(2) + '%</td>' +
       '<td class="num" style="color:' + (r.prevPct == null ? 'var(--text-dim)' : r.prevPct > TARGET ? 'var(--warn)' : 'var(--accent)') + '">' + (r.prevPct == null ? '—' : r.prevPct.toFixed(2) + '%') + '</td>' +
       '<td class="num" style="color:' + (r.excess > 0 ? 'var(--danger)' : 'var(--accent)') + '">' + (r.excess > 0 ? r.excess.toLocaleString() : '—') + '</td>' +
+      '<td class="num" style="color:var(--text-dim)">' + r.tgtig.toLocaleString() + '</td>' +
       '<td class="num" style="color:' + (r.reducePrev > 0 ? 'var(--danger);font-weight:600' : 'var(--accent)') + '">' + (r.reducePrev > 0 ? r.reducePrev.toLocaleString() : '—') + '</td>' +
+      '<td style="font-size:11px;max-width:280px;min-width:180px;white-space:normal;line-height:1.4;color:var(--text-dim)">' + (r.inc > TARGET
+        ? 'Cut ' + r.ig.toLocaleString() + ' → ≤' + r.tgtig.toLocaleString() + ' IGCC orders (' + r.inc.toFixed(2) + '% → ' + TARGET.toFixed(2) + '%, remove ' + r.excess.toLocaleString() + ')'
+        : 'On target (' + r.inc.toFixed(2) + '% ≤ ' + TARGET.toFixed(2) + '%, allowed ≤' + r.tgtig.toLocaleString() + ') — maintain, no push higher') + '</td>' +
       '<td class="num"><div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;"><div style="height:8px;width:' + bw + 'px;min-width:2px;background:var(--danger);border-radius:4px;opacity:.75;"></div><span style="color:var(--danger);font-weight:600">' + r.pp.toFixed(2) + '</span></div></td>' +
       '</tr>';
   }).join('');
@@ -5290,10 +5301,14 @@ function exportImpactStores(){
   if (!_lastImpactStoreRows.length) { toast('Nothing to export'); return; }
   var TARGET = impactTarget();
   var clean = function(v){ var s = String(v == null ? '' : v).replace(/<[^>]*>/g, '').replace(/[\r\n]/g, ' ').trim(); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-  var rowsOut = [['Store ID','Store','City','Tier','IGCC','Orders','IGCC%','Prev IGCC%','IGCC over target','Reduction vs Prev (to target)','Impact pp']].concat(
+  var rowsOut = [['Store ID','Store','City','Tier','IGCC','Orders','IGCC%','Target IGCC','Target %','Prev IGCC%','IGCC over target','Reduction vs Prev (to target)','Action Plan','Impact pp']].concat(
     _lastImpactStoreRows.map(function(r){
       return [r.sid, r.name, r.city, 'T' + r.tier, r.ig, r.tot, r.inc.toFixed(2),
-              (r.prevPct != null ? r.prevPct.toFixed(2) : ''), r.excess, r.reducePrev, r.pp.toFixed(2)];
+              r.tgtig, TARGET.toFixed(2),
+              (r.prevPct != null ? r.prevPct.toFixed(2) : ''), r.excess, r.reducePrev,
+              (r.inc > TARGET ? 'Cut ' + r.ig + ' -> <=' + r.tgtig + ' IGCC orders (' + r.inc.toFixed(2) + '% -> ' + TARGET.toFixed(2) + '%, remove ' + r.excess + ')'
+                              : 'On target (' + r.inc.toFixed(2) + '% <= ' + TARGET.toFixed(2) + '%) — maintain, no push higher'),
+              r.pp.toFixed(2)];
     }));
   var csv = rowsOut.map(function(r){ return r.map(clean).join(','); }).join('\n');
   var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -5421,11 +5436,12 @@ function exportImpact(){
   if (!_lastImpactRows.length) { toast('Nothing to export'); return; }
   var TARGET = impactTarget();
   var clean = function(v){ var s = String(v == null ? '' : v).replace(/<[^>]*>/g, '').replace(/[\r\n]/g, ' ').trim(); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-  var rowsOut = [['City','Tier','IGCC','Orders','IGCC%','Impact pp','Share of IGCC %','IGCC over target','Prev IGCC%','Reduction vs Prev (to target)','Overall if fixed %','vs Prev pp','RCA Bucket','Suggested Action']].concat(
+  var rowsOut = [['City','Tier','IGCC','Orders','IGCC%','Impact pp','Share of IGCC %','IGCC over target','Target IGCC','Target %','Prev IGCC%','Reduction vs Prev (to target)','Overall if fixed %','vs Prev pp','RCA Bucket','Suggested Action']].concat(
     _lastImpactRows.map(function(r){
       var rcaT = impactRcaTop(r.rca);
       var delta = (r.prev != null && r.inc != null) ? (r.inc - r.prev) : null;
       return [r.name, 'T' + r.tier, r.ig, r.tot, r.inc.toFixed(2), r.pp.toFixed(2), r.share.toFixed(1), r.excess,
+              r.tgtig, TARGET.toFixed(2),
               (r.prev != null ? r.prev.toFixed(2) : ''), (r.reducePrev != null ? r.reducePrev : ''),
               (r.fixedPct != null ? r.fixedPct.toFixed(2) : ''), (delta != null ? delta.toFixed(2) : ''),
               (rcaT ? rcaT.label + ' (' + rcaT.share.toFixed(0) + '%)' : ''), impactAction(r, null, TARGET)];
