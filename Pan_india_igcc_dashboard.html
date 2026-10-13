@@ -501,7 +501,7 @@
 
 <div id="toptab-impact" style="display:none;">
   <div class="panel" id="panel-impact" style="margin-bottom:24px;">
-    <div class="panel-header"><h2 style="color:var(--danger)" id="h-impact">IGCC Impact — City Contribution</h2><span class="edit-hint" style="margin:0;">which cities push the overall IGCC% up · sorted by impact · click headers to sort</span><button class="btn" onclick="exportImpact()" style="margin-left:auto;font-size:11px;padding:4px 10px;">&#11015; Download CSV</button></div>
+    <div class="panel-header"><h2 style="color:var(--danger)" id="h-impact">IGCC Impact — City Contribution</h2><span class="edit-hint" style="margin:0;">which cities push the overall IGCC% up · sorted by impact · click headers to sort · click a city row to view its data</span><button class="btn" onclick="exportImpact()" style="margin-left:auto;font-size:11px;padding:4px 10px;">&#11015; Download CSV</button></div>
     <div style="overflow-x:auto;"><table>
       <thead><tr>
         <th data-impsort="name">City</th><th>Tier</th>
@@ -5211,7 +5211,7 @@ function renderImpactTab(){
     var bw = Math.min(100, Math.max(2, r.pp / maxPp * 100));
     var ppCol = r.inc > TARGET ? 'var(--danger)' : 'var(--accent)';
     var delta = (r.prev != null && r.inc != null) ? (r.inc - r.prev) : null;
-    return '<tr>' +
+    return '<tr style="cursor:pointer" onclick="selectCity(\'' + r.name + '\')" title="View all data for ' + r.name + '">' +
       '<td style="font-weight:500">' + r.name + '</td>' +
       '<td>T' + r.tier + '</td>' +
       '<td class="num">' + r.ig.toLocaleString() + '</td><td class="num">' + r.tot.toLocaleString() + '</td>' +
