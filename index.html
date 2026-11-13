@@ -1537,6 +1537,32 @@ function applyRegionFilter() {
 }
 
 // ── Month filter (multi-month → expand to weeks → _ACTIVE) ───
+// ISO week number of a 'YYYY-MM-DD' string — used to map month/half-year
+// selections onto historical-year data, which has no WEEK_RANGES entries
+// (that map only covers the 2026 calendar).
+function isoWeekNumOf(ds) {
+  var d = new Date(ds + 'T00:00:00Z');
+  var t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  var day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  var yrStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return Math.ceil(((t - yrStart) / 86400000 + 1) / 7);
+}
+// Historical-year weeks (present in WEEKLY_FROM_SHEET_HIST) intersecting a
+// date range; empty for 2026, where the caller uses WEEK_RANGES instead.
+function histWeeksIntersecting(fromStr, toStr) {
+  var yrH = (currentYear !== '2026' && typeof WEEKLY_FROM_SHEET_HIST !== 'undefined') ? WEEKLY_FROM_SHEET_HIST[currentYear] : null;
+  if (!yrH) return [];
+  var a = isoWeekNumOf(fromStr), b = isoWeekNumOf(toStr);
+  if (b < a) b = 53; // range wraps past year end (e.g. Dec) — take rest of year
+  var out = [];
+  for (var w = a; w <= b; w++) {
+    var wk = 'W' + w;
+    var has = Object.keys(yrH).some(function(c) { return yrH[c] && yrH[c][wk]; });
+    if (has) out.push(wk);
+  }
+  return out;
+}
 function applyMonthFilter() {
   var sel = Array.from(MS.month.sel).filter(function(v) { return v && /^\d{4}-\d{2}$/.test(v); });
   if (sel.length === 0) {
@@ -1550,7 +1576,8 @@ function applyMonthFilter() {
     var lastDay = new Date(y, mo, 0).getDate();
     var from = ym + '-01';
     var to   = ym + '-' + String(lastDay).padStart(2,'0');
-    weeksIntersectingRange(from, to).forEach(function(w) {
+    var wks = (currentYear === '2026') ? weeksIntersectingRange(from, to) : histWeeksIntersecting(from, to);
+    wks.forEach(function(w) {
       if (!seenWk.has(w)) { seenWk.add(w); allWeeks.push(w); }
     });
   });
@@ -1581,7 +1608,8 @@ function applyHalfYearFilter() {
       from = yr + '-10-01';
       to   = (yr + 1) + '-03-31';
     }
-    weeksIntersectingRange(from, to).forEach(function(w) {
+    var wks = (currentYear === '2026') ? weeksIntersectingRange(from, to) : histWeeksIntersecting(from, to);
+    wks.forEach(function(w) {
       if (!seenWk.has(w)) { seenWk.add(w); allWeeks.push(w); }
     });
   });
@@ -1877,8 +1905,48 @@ function cityWk(city, wk) {
 // When a date range is active, populate a synthetic '_ACTIVE' week per city
 // that aggregates the intersecting ISO weeks. Renderers consume currentWeek,
 // which gets pointed at '_ACTIVE' in date mode — no other code changes needed.
+// Historical years have no DATA.cities week data — their per-week orders/igcc
+// live in WEEKLY_FROM_SHEET_HIST, so the synthetic week is built from there.
 function refreshActiveWeek() {
   if (!dateRange) return;
+  if (currentYear !== '2026' && typeof WEEKLY_FROM_SHEET_HIST !== 'undefined' && WEEKLY_FROM_SHEET_HIST[currentYear]) {
+    var yrH = WEEKLY_FROM_SHEET_HIST[currentYear];
+    Object.keys(yrH).forEach(function(city) {
+      var o = 0, i = 0;
+      dateRange.weeks.forEach(function(w) {
+        var x = yrH[city][w];
+        if (x) { o += x.orders || 0; i += x.igcc || 0; }
+      });
+      if (!yrH[city]._ACTIVE) yrH[city]._ACTIVE = { orders: 0, igcc: 0 };
+      yrH[city]._ACTIVE = { orders: o, igcc: i };
+    });
+    // Aggregate the per-week top-article arrays (SKUS_BY_WEEK_HIST) into a
+    // synthetic '_ACTIVE' SKU list so the Top SKUs tables work in month mode too.
+    // SKUS_BY_WEEK_HIST is structured [year][city][week] -> array of articles.
+    if (typeof SKUS_BY_WEEK_HIST !== 'undefined' && SKUS_BY_WEEK_HIST[currentYear]) {
+      var aggSkus = {};
+      var histYr = SKUS_BY_WEEK_HIST[currentYear];
+      Object.keys(histYr).forEach(function(city) {
+        var cityWks = histYr[city] || {};
+        dateRange.weeks.forEach(function(w) {
+          (cityWks[w] || []).forEach(function(s) {
+            var code = String(s.code);
+            if (!aggSkus[city]) aggSkus[city] = {};
+            if (!aggSkus[city][code]) aggSkus[city][code] = { code: code, name: s.name || code, igcc: 0, orders: 0 };
+            aggSkus[city][code].igcc   += s.igcc   || 0;
+            aggSkus[city][code].orders += s.orders || 0;
+          });
+        });
+      });
+      var outSkus = {};
+      Object.keys(aggSkus).forEach(function(city) {
+        outSkus[city] = Object.values(aggSkus[city]).sort(function(a,b){ return b.igcc - a.igcc; });
+      });
+      DATA.skusByCity = outSkus;
+      buildArticleList();
+    }
+    return;
+  }
   Object.values(DATA.cities).forEach(c => {
     let o = 0, i = 0;
     for (const w of dateRange.weeks) {
@@ -3924,8 +3992,10 @@ function updateSelectsForYear(yr) {
 
   // Derive month bounds automatically from WEEK_RANGES end dates for the current year,
   // falling back to YEAR_MONTH_BOUNDS only when no WEEK_RANGES data exists for the year.
+  // WEEK_RANGES only covers the 2026 calendar, so restrict it to 2026 — for other years
+  // only W1's start (2025-12-29) matches, collapsing the month list to Dec alone.
   var moBounds = Object.assign({}, YEAR_MONTH_BOUNDS[yr] || {min:1, max:12});
-  if (typeof WEEK_RANGES !== 'undefined') {
+  if (yr === '2026' && typeof WEEK_RANGES !== 'undefined') {
     var moNums = [];
     wkItems.forEach(function(wk) {
       var r = WEEK_RANGES[wk];
@@ -4064,7 +4134,7 @@ function applyDateRange() {
   const to   = document.getElementById('date-to').value;
   if (!from || !to) { toast('Pick both From and To dates', true); return; }
   if (from > to)    { toast('From must be on or before To', true); return; }
-  const weeks = weeksIntersectingRange(from, to);
+  const weeks = (currentYear === '2026') ? weeksIntersectingRange(from, to) : histWeeksIntersecting(from, to);
   if (!weeks.length) {
     toast('No data weeks intersect that range', true); return;
   }
