@@ -553,7 +553,7 @@
         <th class="num" data-imsort="prevpct" id="th-ims-prev" title="Store IGCC% in the previous week">Prev IGCC%</th>
         <th class="num" data-imsort="tgtig" title="Allowed IGCC orders at the target rate = orders × target%. Constant target — stores already at/below this are not pushed higher.">Target IGCC</th>
         <th class="num" data-imsort="reduceprev" title="Reduction need = max(0, this-week IGCC − orders × target%). Removing this many IGCC orders brings the store to the target.">Reduction need</th>
-        <th style="text-align:left" title="Constant 1.25% target: above-target stores get a cut-to-target plan; at/below-target stores are maintained as-is.">Action Plan</th>
+        <th style="text-align:left" title="Month-wise target: above-target stores get a cut-to-target plan; at/below-target stores are maintained as-is.">Action Plan</th>
         <th class="num" data-imsort="pp" title="Store pp-contribution to the overall scope IGCC%">Impact (pp)</th>
       </tr></thead><tbody id="tb-impact-stores"></tbody>
     </table></div>
@@ -5043,21 +5043,21 @@ function resetData() {
 DATA.skusByCity = SKUS_BY_WEEK[currentWeek] || SKUS_BY_WEEK[Object.keys(SKUS_BY_WEEK).sort(function(a,b){return parseInt(a.slice(1))-parseInt(b.slice(1));}).pop()] || {};
 saveData();
 
-// Monthly targets (user-set 2026-10-12): Oct 2026 = 1.25%; default otherwise 1.25%.
-// Resolved from the current period's end month (date-range mode) or the active week.
+// Month-wise targets — keep in sync with TARGET_BY_MONTH in igcc_daily_dashboard.html (user-set 2026-11-18).
+// Resolved from the current period's end date (date-range mode) or the active 2026 week's end date.
 // Defined in the main script block so renderKPIs/renderBanner (called below) can use it.
 function impactTarget(){
+  var TARGET_BY_MONTH = {'2026-10':1.25,'2026-11':1.16,'2026-12':1.04,'2027-01':1.04,'2027-02':1.09,'2027-03':1.17};
+  var TARGET_DEFAULT = 1.25;
   var wkNum = parseInt(String(currentWeek).slice(1), 10) || 1;
-  var m = null;
+  var d = null;
   if (dateRange && dateRange.to) {
-    m = parseInt(dateRange.to.slice(5, 7), 10);
-  } else if (typeof WEEK_RANGES !== 'undefined' && WEEK_RANGES['W' + wkNum]) {
-    m = parseInt(WEEK_RANGES['W' + wkNum].end.slice(5, 7), 10);
+    d = dateRange.to;
+  } else if ((typeof currentYear === 'undefined' || String(currentYear) === '2026') && typeof WEEK_RANGES !== 'undefined' && WEEK_RANGES['W' + wkNum]) {
+    d = WEEK_RANGES['W' + wkNum].end;
   }
-  var y = dateRange && dateRange.to ? parseInt(dateRange.to.slice(0, 4), 10) : (typeof currentYear !== 'undefined' ? +currentYear : 2026);
-  // Monthly targets — add rows here as new months get targets
-  var M = {'2026': {10: 1.25}};
-  return (M[y] && M[y][m] != null) ? M[y][m] : 1.25;
+  var k = String(d || '').slice(0, 7);
+  return TARGET_BY_MONTH.hasOwnProperty(k) ? TARGET_BY_MONTH[k] : TARGET_DEFAULT;
 }
 
 // ---- Generic click-to-sort for main-dashboard tables (asc on 1st click, desc on 2nd) ----
